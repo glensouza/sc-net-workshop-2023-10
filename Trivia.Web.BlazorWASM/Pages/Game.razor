@@ -1,0 +1,230 @@
+﻿@using Trivia.Shared.Services
+@using Blazored.LocalStorage
+@using Trivia.Shared.Extensions
+@using Trivia.Shared.Models
+@using System.Runtime.CompilerServices
+
+@inject OpenTriviaDbService OpenTriviaDbService
+@inject ILocalStorageService LocalStorage
+
+@page "/game"
+@page "/game/{categoryId}"
+@page "/game/{categoryId}/{numberOfQuestions:int}"
+@page "/game/{CategoryId}/{NumberOfQuestions:int}/{Difficulty}"
+@page "/game/{CategoryId}/{NumberOfQuestions:int}/{Difficulty}/{QuestionType}"
+
+
+@if(this.loading) {
+<h1>Loading...</h1>
+} else {
+    <section id="game">
+        <div class="card">
+            <div class="card-header">
+                Trivia Game
+            </div>
+            <div class="card-body">
+                <div class="col-lg-12">
+                    <ul>
+                        <li>Category: @(this.category)</li>
+                        <li>NumberOfQuestions: @(this.NumberOfQuestions)</li>
+                        <li>Difficulty: @(this.Difficulty)</li>
+                        <li>QuestionType: @(this.QuestionType)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (!this.loading && this.question is not null && this.answers is not null)
+                {
+                    <p>@((MarkupString)this.question.QuestionText)</p>
+                    <ul style="list-style-type: none;">
+                        <InputRadioGroup @bind-Value="this.checkedValue">
+                            @foreach (string? answer in this.answers)
+                            {
+                                <li>
+                                    <InputRadio Value="answer" /> @((MarkupString)answer)
+                                </li>
+                            }
+                        </InputRadioGroup>
+                    </ul>
+                }
+            </div>
+            <div class="card-body">
+                @(this.stats)
+            </div>
+            <div class="card-footer text-muted">
+                @if (!this.gameEnded)
+                {
+                    <button type="button" class="btn btn-primary @(!string.IsNullOrEmpty(this.checkedValue) ? string.Empty : "disabled")" @onclick="this.NextQuestion">Submit Answer</button>
+                }
+                else
+                {
+                    if (!this.changeCategory)
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="this.PlayAgain">Play Again</button>
+                    }
+
+                    <a href="/" class="btn btn-primary">Change Category</a>
+                }
+                <div>@(this.lastAnswerStatus)</div>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public string CategoryId { get; set; } = "0";
+    [Parameter] public int? NumberOfQuestions { get; set; } = 10;
+    [Parameter] public string Difficulty { get; set; } = OpenTriviaDbEnums.Difficulty.Easy.ToString();
+    [Parameter] public string QuestionType { get; set; } = OpenTriviaDbEnums.QuestionType.MultiChoice.ToString();
+
+    private bool loading = true;
+    private string checkedValue = string.Empty;
+    private string lastAnswerStatus = string.Empty;
+
+    private List<TriviaCategory> TriviaCategories { get; set; } = new();
+    private string category = string.Empty;
+    private Question[] questions = Array.Empty<Question>();
+    private Question? question = null;
+    private List<string>? answers = null;
+    private string stats = "Question 1/10 - Your score: 0";
+    private int score = 0;
+    private bool gameEnded = false;
+    private bool changeCategory = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        this.CategoryId ??= "9";
+        this.NumberOfQuestions ??= 10;
+        this.Difficulty ??= OpenTriviaDbEnums.Difficulty.Easy.ToString();
+        this.QuestionType ??= OpenTriviaDbEnums.QuestionType.MultiChoice.ToString();
+
+        // check session id
+        string sessionId = await this.LocalStorage.GetItemAsStringAsync("sessionId");
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            await this.OpenTriviaDbService.CreateSessionTokenAsync();
+            sessionId = this.OpenTriviaDbService.SessionToken;
+            await this.LocalStorage.SetItemAsStringAsync("sessionId", sessionId);
+        }
+        else
+        {
+            this.OpenTriviaDbService.SetSessionToken(sessionId);
+        }
+
+        this.TriviaCategories = await this.LocalStorage.GetItemAsync<List<TriviaCategory>>("triviaCategories") ?? new List<TriviaCategory>();
+        if (this.TriviaCategories.Count == 0)
+        {
+            TriviaCategory[]? newTriviaCategories = await this.OpenTriviaDbService.GetCategoriesAsync();
+            if (newTriviaCategories != null)
+            {
+                this.TriviaCategories = newTriviaCategories.OrderBy(s => s.Name).ToList();
+                await this.LocalStorage.SetItemAsync("triviaCategories", this.TriviaCategories);
+            }
+        }
+        this.category = this.TriviaCategories.FirstOrDefault(x => x.Id == this.CategoryId)?.Name ?? string.Empty;
+
+        // read unanswered questions from localstorage
+        this.questions = (await this.LocalStorage.GetItemAsync<Question[]>($"unansweredQuestions-{this.CategoryId}") ?? Array.Empty<Question>()).Take(Convert.ToInt16(this.NumberOfQuestions)).ToArray();
+
+        // get more questions
+        if (this.questions.Length < Convert.ToInt16(this.NumberOfQuestions))
+        {
+            Question[] moreQuestions = await this.OpenTriviaDbService.GetQuestionsAsync((int)this.NumberOfQuestions - this.questions.Length, Convert.ToInt16(this.CategoryId), (OpenTriviaDbEnums.QuestionType)Enum.Parse(typeof(OpenTriviaDbEnums.QuestionType), this.QuestionType), (OpenTriviaDbEnums.Difficulty)Enum.Parse(typeof(OpenTriviaDbEnums.Difficulty), this.Difficulty));
+            if (moreQuestions.Length > 0)
+            {
+                this.questions = this.questions.Concat(moreQuestions).ToArray();
+            }
+        }
+
+        // store unanswered questions in localstorage
+        await this.LocalStorage.SetItemAsync($"unansweredQuestions-{this.CategoryId}", this.questions);
+
+        this.questions.Shuffle();
+        this.NumberOfQuestions = this.questions.Length;
+        if (this.NumberOfQuestions == 0)
+        {
+            this.gameEnded = true;
+            this.stats = "No questions found for this category. Please try another category.";
+            this.loading = false;
+            this.changeCategory = true;
+            if (this.TriviaCategories.Any(s => s.Id == this.CategoryId))
+            {
+                this.TriviaCategories.Remove(this.TriviaCategories.FirstOrDefault(s => s.Id == this.CategoryId)!);
+            }
+
+            await this.LocalStorage.SetItemAsync("triviaCategories", this.TriviaCategories);
+            return;
+        }
+
+        this.stats = $"Question 1/{this.NumberOfQuestions} - Your score: 0";
+        this.question = this.questions.FirstOrDefault() ?? new Question();
+        this.answers = this.GetAnswers(this.question);
+
+        // spinner
+        this.loading = false;
+    }
+
+    private List<string> GetAnswers(Question questionToBeAnswered)
+    {
+        if (questionToBeAnswered.CorrectAnswer is null)
+        {
+            return new List<string>();
+        }
+        
+        List<string> answersToBeShuffled = new() { questionToBeAnswered.CorrectAnswer };
+        answersToBeShuffled.AddRange(questionToBeAnswered.IncorrectAnswers);
+        answersToBeShuffled.Shuffle();
+        return answersToBeShuffled;
+    }
+
+    private async Task NextQuestion()
+    {
+        // check answer
+        if (this.question?.CorrectAnswer == this.checkedValue)
+        {
+            // update score
+            this.score++;
+            this.lastAnswerStatus = "Correct!";
+        }
+        else
+        {
+            this.lastAnswerStatus = $"Incorrect! The correct answer is: \"{this.question?.CorrectAnswer}\"";
+        }
+
+        // get next question
+        if (this.questions.Length == 1)
+        {
+            // end game
+            this.question = null;
+            this.questions = Array.Empty<Question>();
+            this.stats = $"Your score: {this.score}/{this.NumberOfQuestions}";
+            this.gameEnded = true;
+        }
+        else
+        {
+            this.question = this.questions[1];
+            this.answers = this.GetAnswers(this.question);
+            this.questions = this.questions.Skip(1).ToArray();
+            this.stats = $"Question {this.NumberOfQuestions - this.questions.Length + 1}/{this.NumberOfQuestions} - Your score: {this.score}";
+        }
+
+        // store in localstorage unanswered questions
+        await this.LocalStorage.SetItemAsync($"unansweredQuestions-{this.CategoryId}", this.questions);
+        this.checkedValue = string.Empty;
+    }
+
+    private async Task PlayAgain()
+    {
+        this.loading = true;
+        this.gameEnded = false;
+        this.score = 0;
+        this.questions = await this.OpenTriviaDbService.GetQuestionsAsync(10, Convert.ToInt16(this.CategoryId), OpenTriviaDbEnums.QuestionType.MultiChoice, OpenTriviaDbEnums.Difficulty.Easy);
+        this.NumberOfQuestions = this.questions.Length;
+        this.stats = $"Question 1/{this.NumberOfQuestions} - Your score: 0";
+        this.question = this.questions.FirstOrDefault() ?? new Question();
+        this.answers = this.GetAnswers(this.question);
+        this.loading = false;
+    }
+}

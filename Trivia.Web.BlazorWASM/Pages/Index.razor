@@ -1,0 +1,76 @@
+﻿@using Trivia.Shared.Models
+@using Trivia.Shared.Services
+
+@inject OpenTriviaDbService OpenTriviaDbService
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+@page "/"
+
+<PageTitle>Trivia</PageTitle>
+
+<section id="start">
+    <div class="card">
+        <div class="card-header">
+            Trivia Game
+        </div>
+        <div class="card-body">
+            <p>Do you a want to test your trivia knowledge? Put it to the test and see how much you really know!</p>
+            <div class="col-lg-12">
+                <label>Select a Category</label>
+                <select @bind="this.SelectedCategory">
+                    @foreach (TriviaCategory template in this.TriviaCategories)
+                    {
+                        <option value=@template.Id>@template.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-12">
+                <label>Number of Questions</label>
+                <input type="number" min="1" max="50" @bind="this.numberOfQuestions" />
+            </div>
+            <div class="col-lg-12">
+                <label>Difficulty</label>
+                <select @bind="this.Difficulty">
+                    @foreach (OpenTriviaDbEnums.Difficulty difficulty in Enum.GetValues(typeof(OpenTriviaDbEnums.Difficulty)))
+                    {
+                        <option value=@difficulty>@difficulty</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-12">
+                <label>Question Type</label>
+                <select @bind="this.QuestionType">
+                    @foreach (OpenTriviaDbEnums.QuestionType questionType in Enum.GetValues(typeof(OpenTriviaDbEnums.QuestionType)))
+                    {
+                        <option value=@questionType>@questionType</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <a href="/game/@this.SelectedCategory/@this.numberOfQuestions/@this.Difficulty/@this.QuestionType" class="btn btn-primary">Start Game</a>
+        </div>
+    </div>
+</section>
+
+@code
+{
+    private List<TriviaCategory> TriviaCategories { get; set; } = new();
+    private string? SelectedCategory { get; set; } = "9";
+    private string numberOfQuestions = "10";
+    private OpenTriviaDbEnums.Difficulty Difficulty { get; set; } = OpenTriviaDbEnums.Difficulty.Easy;
+    private OpenTriviaDbEnums.QuestionType QuestionType { get; set; } = OpenTriviaDbEnums.QuestionType.MultiChoice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        this.TriviaCategories = await this.LocalStorage.GetItemAsync<List<TriviaCategory>>("triviaCategories") ?? new List<TriviaCategory>();
+        if (this.TriviaCategories.Count == 0)
+        {
+            TriviaCategory[] newTriviaCategories = await this.OpenTriviaDbService.GetCategoriesAsync();
+            this.TriviaCategories = newTriviaCategories.OrderBy(s => s.Name).ToList();
+            await this.LocalStorage.SetItemAsync("triviaCategories", this.TriviaCategories);
+        }
+    }
+}

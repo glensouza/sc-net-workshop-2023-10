@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Trivia.SWA.API": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7018",
+      "launchBrowser": false
+    }
+  }
+}
