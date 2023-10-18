@@ -5,6 +5,7 @@
 
 # SQL Demos
 SQL/Sample/
+appsettings.json
 
 # User-specific files
 *.rsuser
@@ -399,5 +400,3 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-SQL/Employee.MVC/appsettings.json
-SQL/Employee.MVC/appsettings.json
