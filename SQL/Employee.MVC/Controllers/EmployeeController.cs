@@ -27,12 +27,12 @@ namespace Employee.MVC.Controllers
         {
             if (ModelState.IsValid)
             {
-                var cdate = DateTime.Now;
+                DateTime cdate = DateTime.Now;
                 empobj.RecordCreatedOn = cdate;
 
                 _context.Employees.Add(empobj);
                 _context.SaveChanges();
-                TempData["ResultOk"] = "Record Added Successfully !";
+                TempData["ResultOk"] = $"Record for {empobj.Name} Added Successfully !";
                 return RedirectToAction("Index");
             }
 
@@ -45,7 +45,7 @@ namespace Employee.MVC.Controllers
             {
                 return NotFound();
             }
-            var empfromdb = _context.Employees.Find(id);
+            Models.Employee? empfromdb = _context.Employees.Find(id);
 
             if (empfromdb == null)
             {
@@ -62,7 +62,7 @@ namespace Employee.MVC.Controllers
             {
                 _context.Employees.Update(empobj);
                 _context.SaveChanges();
-                TempData["ResultOk"] = "Data Updated Successfully !";
+                TempData["ResultOk"] = $"Data for {empobj.Name} Updated Successfully !";
                 return RedirectToAction("Index");
             }
 
@@ -75,7 +75,7 @@ namespace Employee.MVC.Controllers
             {
                 return NotFound();
             }
-            var empfromdb = _context.Employees.Find(id);
+            Models.Employee? empfromdb = _context.Employees.Find(id);
 
             if (empfromdb == null)
             {
@@ -88,14 +88,14 @@ namespace Employee.MVC.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeleteEmp(int? id)
         {
-            var deleterecord = _context.Employees.Find(id);
+            Models.Employee? deleterecord = _context.Employees.Find(id);
             if (deleterecord == null)
             {
                 return NotFound();
             }
             _context.Employees.Remove(deleterecord);
             _context.SaveChanges();
-            TempData["ResultOk"] = "Data Deleted Successfully !";
+            TempData["ResultOk"] = $"{id} Record Deleted Successfully !";
             return RedirectToAction("Index");
         }
 

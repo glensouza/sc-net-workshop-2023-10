@@ -17,7 +17,7 @@ namespace Employee.Function.OutputBinding
             int totalUpserts = 100;
             log.LogInformation($"[QueueTrigger]: {DateTime.Now} starting execution {queueMessage}. Rows to generate={totalUpserts}.");
 
-            var sw = new Stopwatch();
+            Stopwatch sw = new Stopwatch();
             sw.Start();
 
             List<Product> newProducts = ProductUtilities.GetNewProducts(totalUpserts);

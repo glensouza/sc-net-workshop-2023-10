@@ -26,7 +26,7 @@ namespace Employee.Function.InputBinding
             IAsyncEnumerable<Product> products)
         {
             IAsyncEnumerator<Product> enumerator = products.GetAsyncEnumerator();
-            var productList = new List<Product>();
+            List<Product> productList = new List<Product>();
             while (await enumerator.MoveNextAsync())
             {
                 productList.Add(enumerator.Current);

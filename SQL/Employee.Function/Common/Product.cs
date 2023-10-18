@@ -12,7 +12,7 @@ public class Product
     {
         if (obj is Product)
         {
-            var that = obj as Product;
+            Product that = obj as Product;
             return this.ProductId == that.ProductId && this.Name == that.Name && this.Cost == that.Cost;
         }
         return false;
@@ -36,7 +36,7 @@ public class ProductName
     {
         if (obj is Product)
         {
-            var that = obj as Product;
+            Product that = obj as Product;
             return this.Name == that.Name;
         }
         return false;

@@ -22,7 +22,7 @@ namespace Employee.Function.OutputBinding
             int totalUpserts = 1000;
             log.LogInformation($"{DateTime.Now} starting execution #{_executionNumber}. Rows to generate={totalUpserts}.");
 
-            var sw = new Stopwatch();
+            Stopwatch sw = new Stopwatch();
             sw.Start();
 
             List<Product> newProducts = ProductUtilities.GetNewProducts(totalUpserts);
