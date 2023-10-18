@@ -21,9 +21,7 @@ namespace Employee.Function.InputBinding
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproduct-namesview/")]
             HttpRequest req,
-            [Sql("SELECT * FROM ProductNames",
-                "SqlConnectionString")]
-            IEnumerable<ProductName> products)
+            [Sql("SELECT * FROM ProductNames", "SqlConnectionString")] IEnumerable<ProductName> products)
         {
             return new OkObjectResult(products);
         }

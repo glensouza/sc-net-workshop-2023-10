@@ -19,15 +19,11 @@ namespace Employee.Function.InputBinding
         // for which the Name column is equal to that string value
         [FunctionName("GetProductsNameNull")]
         [OpenApiOperation(operationId: "Run", tags: new[] { "Input Binding" })]
-        [OpenApiParameter(name: "name", In = ParameterLocation.Path, Required = false, Type = typeof(string), Description = "The **Name** parameter")]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(IEnumerable<Product>), Description = "The OK response")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-namenull/{name}")]
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-namenull")]
             HttpRequest req,
-            [Sql("if @Name is null select * from Products where Name is null else select * from Products where @Name = name",
-                "SqlConnectionString",
-                parameters: "@Name={name}")]
-            IEnumerable<Product> products)
+            [Sql("select * from Products where Name is null", "SqlConnectionString")] IEnumerable<Product> products)
         {
             return new OkObjectResult(products);
         }
