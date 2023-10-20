@@ -20,10 +20,7 @@ namespace Employee.Function.InputBinding
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductstopn/{count}")]
             HttpRequest req,
-            [Sql("SELECT TOP(CAST(@Count AS INT)) * FROM Products",
-                "SqlConnectionString",
-                parameters: "@Count={count}")]
-            IEnumerable<Product> products)
+            [Sql("SELECT TOP(CAST(@Count AS INT)) * FROM Products", "SqlConnectionString", parameters: "@Count={count}")] IEnumerable<Product> products)
         {
             return new OkObjectResult(products);
         }
